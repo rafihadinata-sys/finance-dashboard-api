@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Finance Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="bg-slate-900 text-slate-200 p-4">
+    <div class="max-w-5xl mx-auto">
+
+        <h1 class="text-3xl font-bold text-center mb-6">💰 Fiverr Finance Dashboard</h1>
+
+        <!-- FORM -->
+        <div class="bg-slate-800 p-4 rounded mb-6 grid grid-cols-1 md:grid-cols-4 gap-3">
+            <input id="date" type="date" class="bg-slate-700 p-2 rounded">
+            <input id="gig" placeholder="Gig" class="bg-slate-700 p-2 rounded">
+            <input id="usd" placeholder="USD" type="number" class="bg-slate-700 p-2 rounded">
+            <button onclick="add()" class="bg-green-500 text-black rounded font-bold">
+                Save
+            </button>
+        </div>
+
+        <!-- SUMMARY -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div class="bg-slate-800 p-4 rounded">
+                <p>Total USD</p>
+                <h2 id="totalUSD" class="text-xl font-bold">$0</h2>
+            </div>
+            <div class="bg-slate-800 p-4 rounded">
+                <p>Net USD</p>
+                <h2 id="netUSD" class="text-xl font-bold">$0</h2>
+            </div>
+            <div class="bg-slate-800 p-4 rounded">
+                <p>Total IDR</p>
+                <h2 id="totalIDR" class="text-xl font-bold text-green-400">Rp 0</h2>
+            </div>
+        </div>
+
+        <!-- CHART -->
+        <div class="bg-slate-800 p-4 rounded mb-6">
+            <canvas id="chart"></canvas>
+        </div>
+
+        <!-- TABLE -->
+        <div class="bg-slate-800 p-4 rounded">
+            <table class="w-full text-sm">
+                <thead class="text-slate-400">
+                    <tr>
+                        <th>Date</th>
+                        <th>Gig</th>
+                        <th>USD</th>
+                        <th>IDR</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody"></tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <script>
+        const API = "http://127.0.0.1:5000/transactions";
+        const RATE = 16000;
+        let chart;
+
+        async function load() {
+            const res = await fetch(API);
+            const data = await res.json();
+
+            let totalUSD = 0, netUSD = 0, totalIDR = 0;
+            let labels = [], values = [];
+            const tbody = document.getElementById("tbody");
+            tbody.innerHTML = "";
+
+            data.forEach(([date, gig, usd]) => {
+                const net = usd * 0.8, idr = net * RATE;
+                totalUSD += usd; netUSD += net; totalIDR += idr;
+                labels.push(date); values.push(idr);
+
+                tbody.innerHTML += `
+      <tr class="border-t border-slate-700">
+        <td>${date}</td>
+        <td>${gig}</td>
+        <td>$${usd}</td>
+        <td class="text-green-400">Rp ${idr.toLocaleString()}</td>
+      </tr>`;
+            });
+
+            totalUSD.innerText = `$${totalUSD}`;
+            netUSD.innerText = `$${netUSD}`;
+            totalIDR.innerText = `Rp ${totalIDR.toLocaleString()}`;
+
+            if (chart) chart.destroy();
+            chart = new Chart(document.getElementById("chart"), {
+                type: "line",
+                data: { labels, datasets: [{ data: values, borderColor: "#22c55e", fill: true }] },
+                options: { plugins: { legend: { display: false } } }
+            });
+        }
+
+        async function add() {
+            await fetch(API, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    date: date.value,
+                    gig: gig.value,
+                    usd: Number(usd.value)
+                })
+            });
+            load();
+        }
+
+        load();
+    </script>
+</body>
+
+</html>
